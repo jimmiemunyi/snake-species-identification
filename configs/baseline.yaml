@@ -1,0 +1,20 @@
+data:
+  dataset: "SnakeCLEF2021_min-train_metadata_PROD.csv"
+  sample: 10
+  img_size: 224
+dls:
+  batch_size: 64
+train:
+  get_y: genus
+  arch: "resnet18"
+  name: $"{train.name}"
+  epochs: 1
+  lr: None
+
+project: "the-snake-project-cls"
+save_model: False
+checkpoint_name: ""
+
+defaults:
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
