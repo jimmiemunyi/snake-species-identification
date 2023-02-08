@@ -7,13 +7,14 @@ dls:
 train:
   get_y: genus
   arch: "resnet18"
-  name: $"{train.name}"
   epochs: 1
   lr: None
 
+track: True
+name: $"{train.arch}"
 project: "the-snake-project-cls"
 save_model: False
-checkpoint_name: ""
+cpt_name: $"{name}"
 
 defaults:
   - override hydra/job_logging: colorlog

@@ -1,11 +1,12 @@
-# TODO: Implement model saving logic
 import logging
 from functools import partial
 
 import hydra
 import wandb
 from omegaconf import DictConfig, OmegaConf
-from fastai.vision.augment import Resize
+
+from fastai.data.transforms import Normalize
+from fastai.vision.augment import Resize, RandomResizedCrop, imagenet_stats
 from fastai.vision.learner import vision_learner
 from fastai.metrics import accuracy, error_rate
 from fastai.callback.fp16 import MixedPrecision
@@ -35,8 +36,11 @@ def main(cfg: DictConfig) -> None:
 
     print(f"Length of DF: {len(sampled_df)}")
 
-    item_tfms = [Resize(cfg.data.img_size)]
-
+    item_tfms = [Resize(460)]
+    batch_tfms = [
+        RandomResizedCrop(cfg.data.img_size, max_scale=0.75),
+        Normalize.from_stats(*imagenet_stats),
+    ]
     dls = get_dls(
         sampled_df,
         get_x=partial(
@@ -44,6 +48,7 @@ def main(cfg: DictConfig) -> None:
         ),
         get_y=partial(field_getter, field=cfg.train.get_y),
         item_tfms=item_tfms,
+        batch_tfms=batch_tfms,
         bs=cfg.dls.batch_size,
     )
 
@@ -62,9 +67,20 @@ def main(cfg: DictConfig) -> None:
         lr = learn.lr_find()
         log.info(f"Found suitable learning rate: {lr}")
 
-    wandb.init(project=cfg.project, name=cfg.train.name)
-    learn.fit_one_cycle(cfg.train.epochs, lr, cbs= WandbCallback())
-    wandb.finish(quiet=True)
+    cbs = []
+
+    # ugly coding, will look into refractoring this part
+    if cfg.track:
+        wandb.init(project=cfg.project, name=cfg.name)
+        cbs.append(WandbCallback())
+
+    learn.fit_one_cycle(cfg.train.epochs, lr, cbs=cbs)
+
+    # if cfg.track:
+    #     wandb.finish(quiet=True)
+
+    if cfg.save_model == "True":
+        learn.export(fname=f"{cfg.cpt_name}")
 
 
 if __name__ == "__main__":
