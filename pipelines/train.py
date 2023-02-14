@@ -23,26 +23,31 @@ from tsp_cls.utils.data import (
 from tsp_cls.dataloader.dataloader import get_dls
 
 
-log = logging.getLogger("pipelines.test")
+log = logging.getLogger("pipelines.train")
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="baseline")
+@hydra.main(version_base=None, config_path="../configs", config_name="train")
 def main(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
     path = get_data_root()
 
-    df = read_dataframe(path, "SnakeCLEF2021_min-train_metadata_PROD.csv")
-    sampled_df = sample_dataframe(df, cfg.train.get_y, cfg.data.sample)
+    if cfg.data.sample == "full":
+        df = read_dataframe(path, cfg.data.dataset)
+    else:
+        df = read_dataframe(path, "SnakeCLEF2021_min-train_metadata_PROD.csv")
+        df = sample_dataframe(df, cfg.train.get_y, cfg.data.sample)
 
-    print(f"Length of DF: {len(sampled_df)}")
+    print(f"Length of DF: {len(df)}")
 
     item_tfms = [Resize(460)]
+
+    # presizing
     batch_tfms = [
-        RandomResizedCrop(cfg.data.img_size, max_scale=0.75),
+        RandomResizedCrop(cfg.data.pre_size, max_scale=0.75),
         Normalize.from_stats(*imagenet_stats),
     ]
     dls = get_dls(
-        sampled_df,
+        df,
         get_x=partial(
             partial(get_image_path, data_path=path), data_path=get_data_root()
         ),
@@ -61,11 +66,13 @@ def main(cfg: DictConfig) -> None:
         metrics=[error_rate, accuracy],
         cbs=[MixedPrecision()],
     )
-    lr = cfg.train.lr
-    if lr == "None":
+
+    if cfg.lr_find:
         log.info("Trying to find suitable learning rate")
         lr = learn.lr_find()
-        log.info(f"Found suitable learning rate: {lr}")
+        log.info(f"Found suitable learning rate: {lr.valley:.2e}")
+        return
+    lr = cfg.train.lr
 
     cbs = []
 
@@ -74,10 +81,31 @@ def main(cfg: DictConfig) -> None:
         wandb.init(project=cfg.project, name=cfg.name)
         cbs.append(WandbCallback())
 
-    learn.fit_one_cycle(cfg.train.epochs, lr, cbs=cbs)
+    # initial training with presized images
+    log.info(f"Pretraining with image size: {cfg.data.pre_size}")
+    learn.fit_one_cycle(cfg.train.presize_epochs, lr, cbs=cbs)
 
-    # if cfg.track:
-    #     wandb.finish(quiet=True)
+    # finetuning with normal sized images
+    batch_tfms = [
+        RandomResizedCrop(cfg.data.img_size, max_scale=0.75),
+        Normalize.from_stats(*imagenet_stats),
+    ]
+    new_dls = get_dls(
+        df,
+        get_x=partial(
+            partial(get_image_path, data_path=path), data_path=get_data_root()
+        ),
+        get_y=partial(field_getter, field=cfg.train.get_y),
+        item_tfms=item_tfms,
+        batch_tfms=batch_tfms,
+        bs=cfg.dls.batch_size,
+    )
+    learn.dls = new_dls
+    log.info(f"Training with image size: {cfg.data.img_size}")
+    learn.fit_one_cycle(cfg.train.presize_epochs, lr, cbs=cbs)
+
+    if cfg.track:
+        wandb.finish(quiet=True)
 
     if cfg.save_model == "True":
         learn.export(fname=f"{cfg.cpt_name}")
