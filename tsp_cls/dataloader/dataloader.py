@@ -11,7 +11,7 @@ def get_dls(
         blocks=(ImageBlock, CategoryBlock),
         get_x=get_x,
         get_y=get_y,
-        splitter=RandomSplitter(valid_pct=valid_pct),
+        splitter=RandomSplitter(valid_pct=valid_pct, seed=1234),
         item_tfms=item_tfms,
         batch_tfms=batch_tfms,
     )

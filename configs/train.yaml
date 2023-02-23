@@ -1,17 +1,18 @@
 data:
   dataset: "SnakeCLEF2021_min-train_metadata_PROD.csv"
-  sample: 10
-  pre_size: 128
+  classes: 10
   img_size: 224
 dls:
   batch_size: 64
 train:
   get_y: genus
-  arch: "resnet18"
-  presize_epochs: 5
+  arch: "convnext_tiny"
+  freeze_epochs: 1
   epochs: 10
   lr: 0.001
+  wd: 0.0
 
+load_learner: None
 lr_find: False
 track: True
 name: ${train.arch}
