@@ -8,7 +8,7 @@ from omegaconf import DictConfig, OmegaConf
 from fastai.data.transforms import Normalize
 from fastai.vision.augment import Resize, imagenet_stats
 from fastai.vision.learner import vision_learner
-from fastai.metrics import accuracy, error_rate
+from fastai.metrics import accuracy, error_rate, top_k_accuracy, F1Score
 from fastai.optimizer import Adam, LabelSmoothingCrossEntropy
 from fastai.callback.mixup import MixUp
 from fastai.callback.tracker import SaveModelCallback
@@ -40,7 +40,7 @@ def main(cfg: DictConfig) -> None:
         df = read_dataframe(path, cfg.data.dataset)
         df = sample_dataframe(df, cfg.train.get_y, cfg.data.classes)
 
-    print(f"Length of DF: {len(df)}")
+    log.info(f"Length of DF: {len(df)} rows.")
 
     # defining our augmentations
     # TODO: unpack the config variables at the top of this function
@@ -63,8 +63,10 @@ def main(cfg: DictConfig) -> None:
             p=1.0,
         )
 
-    item_tfms = [Resize(256), AlbumentationsTransform(get_train_aug(), get_valid_aug())]
-    # item_tfms = [Resize(img_size)]
+    item_tfms = [
+        Resize(cfg.data.img_presize),
+        AlbumentationsTransform(get_train_aug(), get_valid_aug()),
+    ]
 
     batch_tfms = Normalize.from_stats(*imagenet_stats)
     dls = get_dls(
@@ -78,36 +80,41 @@ def main(cfg: DictConfig) -> None:
         bs=cfg.dls.batch_size,
     )
 
-    print(f"Steps in train_dl: {len(dls.train)}")
-    print(f"Classes being trained on: {dls.vocab}")
+    log.info(f"Steps in train_dl: {len(dls.train)}")
+    log.info(f"Steps in val_dl: {len(dls.valid)}")
 
+    log.info(f"Classes being trained on: {dls.vocab}")
+
+    top_3_accuracy = partial(top_k_accuracy, k=3)
     learn = vision_learner(
         dls,
         cfg.train.arch,
-        metrics=[error_rate, accuracy],
-        cbs=[MixedPrecision(), MixUp()],
+        metrics=[error_rate, accuracy, top_3_accuracy, F1Score(average="macro")],
+        cbs=[MixedPrecision()],
         wd=cfg.train.wd,
         opt_func=Adam,
-        loss_func=LabelSmoothingCrossEntropy(),
+        # loss_func=LabelSmoothingCrossEntropy(),
     )
+
+    if cfg.load_pth:
+        log.info(
+            f"Loading state dict and optimizer state from: models/{cfg.load_pth}.pth"
+        )
+        learn.load(cfg.load_pth)
 
     if cfg.lr_find:
         log.info("Trying to find suitable learning rate")
         lr = learn.lr_find()
         log.info(f"Found suitable learning rate: {lr.valley:.2e}")
-        learn.unfreeze()
-        lr = learn.lr_find()
-        log.info(f"Found suitable learning rate after unfreezing: {lr.valley:.2e}")
-        log.info("Better to pass in as a slice.")
         return
     lr = cfg.train.lr
 
     # callbacks passed during each run like wandb
-    cbs = [SaveModelCallback()]
+    cbs = [SaveModelCallback(monitor='f1_score')]
 
     # ugly coding, will look into refractoring this part
     if cfg.track:
-        wandb.init(project=cfg.project, name=cfg.name)
+        wandb.init(project=cfg.project, name=cfg.track_name)
         cbs.append(WandbCallback())
 
     log.info(f"Training model for {cfg.train.freeze_epochs} initial epochs")
@@ -123,8 +130,11 @@ def main(cfg: DictConfig) -> None:
     if cfg.track:
         wandb.finish(quiet=True)
 
-    if cfg.save_model == "True":
-        learn.export(fname=f"{cfg.cpt_name}")
+    if cfg.save_model:
+        log.info(
+            f"Saving state dict and optimizer state to: models/{cfg.save_model}.pth"
+        )
+        learn.save(f"{cfg.save_model}")
 
 
 if __name__ == "__main__":

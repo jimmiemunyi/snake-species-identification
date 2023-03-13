@@ -1,24 +1,25 @@
 data:
   dataset: "SnakeCLEF2021_min-train_metadata_PROD.csv"
-  classes: 10
+  classes: 50
+  img_presize: 256 # size to be before resizing next.
   img_size: 224
 dls:
   batch_size: 64
 train:
-  get_y: genus
+  get_y: binomial
   arch: "convnext_tiny"
   freeze_epochs: 1
   epochs: 10
   lr: 0.001
   wd: 0.0
 
-load_learner: None
+load_pth: False
 lr_find: False
 track: True
-name: ${train.arch}
+track_name: ${train.arch}
 project: "the-snake-project-cls"
 save_model: False
-cpt_name: ${name}
+pth_name: ${name}
 
 defaults:
   - override hydra/job_logging: colorlog
