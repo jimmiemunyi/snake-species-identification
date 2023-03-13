@@ -1,0 +1,6 @@
+- Figure out how to do checkpointing and resuming training
+- Pretraining and Progressive Resizing
+- Multiclass prediction: Species and Genus
+- Which is better? Species and Genus separately or predicting the Binomial
+- Top 2 accuracy
+- Self Supervised learning

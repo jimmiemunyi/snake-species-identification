@@ -9,8 +9,9 @@ from fastai.data.transforms import Normalize
 from fastai.vision.augment import Resize, imagenet_stats
 from fastai.vision.learner import vision_learner
 from fastai.metrics import accuracy, error_rate
-from fastai.optimizer import Adam, LabelSmoothingCrossEntropyFlat
+from fastai.optimizer import Adam, LabelSmoothingCrossEntropy
 from fastai.callback.mixup import MixUp
+from fastai.callback.tracker import SaveModelCallback
 from fastai.callback.fp16 import MixedPrecision
 from fastai.callback.wandb import WandbCallback
 
@@ -87,6 +88,7 @@ def main(cfg: DictConfig) -> None:
         cbs=[MixedPrecision(), MixUp()],
         wd=cfg.train.wd,
         opt_func=Adam,
+        loss_func=LabelSmoothingCrossEntropy(),
     )
 
     if cfg.lr_find:
@@ -100,7 +102,8 @@ def main(cfg: DictConfig) -> None:
         return
     lr = cfg.train.lr
 
-    cbs = []
+    # callbacks passed during each run like wandb
+    cbs = [SaveModelCallback()]
 
     # ugly coding, will look into refractoring this part
     if cfg.track:
