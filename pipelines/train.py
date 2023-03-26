@@ -9,8 +9,9 @@ from fastai.data.transforms import Normalize
 from fastai.vision.augment import Resize, imagenet_stats
 from fastai.vision.learner import vision_learner
 from fastai.metrics import accuracy, error_rate, top_k_accuracy, F1Score
-from fastai.optimizer import Adam, LabelSmoothingCrossEntropy
-from fastai.callback.mixup import MixUp
+from fastai.optimizer import Adam  # , LabelSmoothingCrossEntropy
+
+# from fastai.callback.mixup import MixUp
 from fastai.callback.tracker import SaveModelCallback
 from fastai.callback.fp16 import MixedPrecision
 from fastai.callback.wandb import WandbCallback
@@ -96,11 +97,9 @@ def main(cfg: DictConfig) -> None:
         # loss_func=LabelSmoothingCrossEntropy(),
     )
 
-    if cfg.load_pth:
-        log.info(
-            f"Loading state dict and optimizer state from: models/{cfg.load_pth}.pth"
-        )
-        learn.load(cfg.load_pth)
+    if cfg.load:
+        log.info(f"Loading state dict and optimizer state from: models/{cfg.load}.pth")
+        learn.load(f"train/{cfg.load}")
 
     if cfg.lr_find:
         log.info("Trying to find suitable learning rate")
@@ -110,7 +109,7 @@ def main(cfg: DictConfig) -> None:
     lr = cfg.train.lr
 
     # callbacks passed during each run like wandb
-    cbs = [SaveModelCallback(monitor='f1_score')]
+    cbs = [SaveModelCallback(monitor="f1_score")]
 
     # ugly coding, will look into refractoring this part
     if cfg.track:
@@ -119,22 +118,26 @@ def main(cfg: DictConfig) -> None:
 
     log.info(f"Training model for {cfg.train.freeze_epochs} initial epochs")
     log.info(f"Unfreezing, and training for a further {cfg.train.epochs} epochs.")
-    learn.fine_tune(
-        epochs=cfg.train.epochs,
-        freeze_epochs=cfg.train.freeze_epochs,
-        base_lr=lr,
-        cbs=cbs,
-    )
+    # learn.fine_tune(
+    #     epochs=cfg.train.epochs,
+    #     freeze_epochs=cfg.train.freeze_epochs,
+    #     base_lr=lr,
+    #     cbs=cbs,
+    # )
     # learn.fit_one_cycle(cfg.train.epochs, lr, cbs=cbs)
 
     if cfg.track:
         wandb.finish(quiet=True)
 
-    if cfg.save_model:
+    if cfg.save:
         log.info(
-            f"Saving state dict and optimizer state to: models/{cfg.save_model}.pth"
+            f"Saving state dict and optimizer state to: models/train/{cfg.save}.pth"
         )
-        learn.save(f"{cfg.save_model}")
+        learn.save(f"train/{cfg.save_model}")
+
+    if cfg.export:
+        log.info(f"Exporting model to: models/learners/{cfg.export}.pkl")
+        learn.export(f"models/learners/{cfg.export}.pkl")
 
 
 if __name__ == "__main__":
