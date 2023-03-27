@@ -24,7 +24,7 @@ species (binomial) and then use other factors like country/continent where a sna
 
 ## Current Progress
 
-https://progress-bar.dev/6.5/?title=progress
+![6.5%](https://progress-bar.dev/6.5/?title=progress)
 
 - Currently, the model has been trained on 50/772 categories as listed on `categories.txt` on the root folder.
 The current model achieves the following metrics
