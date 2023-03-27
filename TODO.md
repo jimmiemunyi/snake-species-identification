@@ -8,5 +8,5 @@
 ## Deployment
 
 - Create a seperate website for prediciton and predicting using Gradio API (Lesson 2 fastai course v5)
-- Add wikipedia descriptions for predicted snake
-- Add country/continent for predicted snake
+- Add docs for custom functions created
+- Write a blog post explaining my experience in this project.

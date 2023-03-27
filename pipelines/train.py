@@ -85,6 +85,11 @@ def main(cfg: DictConfig) -> None:
     log.info(f"Steps in val_dl: {len(dls.valid)}")
 
     log.info(f"Classes being trained on: {dls.vocab}")
+    log.info("Saving classes to: categories.txt")
+    # save the vocab to a categories.txt file with each class in the vocab on a new line
+    with open("categories.txt", "w") as f:
+        for cat in dls.vocab:
+            f.write(f"{cat}\n")
 
     top_3_accuracy = partial(top_k_accuracy, k=3)
     learn = vision_learner(
@@ -118,13 +123,13 @@ def main(cfg: DictConfig) -> None:
 
     log.info(f"Training model for {cfg.train.freeze_epochs} initial epochs")
     log.info(f"Unfreezing, and training for a further {cfg.train.epochs} epochs.")
-    # learn.fine_tune(
-    #     epochs=cfg.train.epochs,
-    #     freeze_epochs=cfg.train.freeze_epochs,
-    #     base_lr=lr,
-    #     cbs=cbs,
-    # )
-    # learn.fit_one_cycle(cfg.train.epochs, lr, cbs=cbs)
+    learn.fine_tune(
+        epochs=cfg.train.epochs,
+        freeze_epochs=cfg.train.freeze_epochs,
+        base_lr=lr,
+        cbs=cbs,
+    )
+    learn.fit_one_cycle(cfg.train.epochs, lr, cbs=cbs)
 
     if cfg.track:
         wandb.finish(quiet=True)

@@ -11,6 +11,10 @@ This log book keeps track of the experiments and activities on this project.
 
 <hr>
 
+## Monday 27th Mar 23
+- Updated the repo name, model name and Space demo to have the same name. Also shared this iteration on fastai forums. From here, what's left to do is experiment on the ideas
+on the TODO.md list and also scale up to the full dataset.
+
 ## Sunday 26th Mar 23
 - Added a way to deploy model to Hugging Face Hub.
 - Updating the HuggingFace Space demo to match the progress so far (binomial instead of genus, 50 classes instead of 10 classes) and returning the top 3 predictions.
