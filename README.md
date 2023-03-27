@@ -24,7 +24,7 @@ species (binomial) and then use other factors like country/continent where a sna
 
 ## Current Progress
 
-- Currently, the model has been trained on 50 categories as listed on `categories.txt` on the root folder.
+- Currently, the model has been trained on 50/772 categories as listed on `categories.txt` on the root folder.
 The current model achieves the following metrics
 
 
@@ -42,3 +42,13 @@ The current model achieves the following metrics
 - Training Reports - [link](https://wandb.ai/jimmiemunyi/the-snake-project-cls/reportlist)
 - Training LogBook - `LOGBOOK.md` on the root folder.
 - TODO list - `TODO.md` on the root folder.
+
+
+## Frameworks and Libraries
+
+- Pytorch
+- fastai
+- TIMM
+- Hydra
+- Wandb
+- Metaflow
